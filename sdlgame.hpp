@@ -25,11 +25,11 @@ namespace nva
     bool loadImage(std::vector<unsigned char>& image, const std::string& filename, int& x, int&y);
 }
 
-struct threadPass
+struct ThreadData
 {
     int stripe;
-    double** zbuffer;
-    void** pixels;
+    double* zbuffer;
+    Uint32* pixels;
 };
 
 //Convenience
@@ -171,7 +171,7 @@ public:
     //Renders false 3d textured
     void pseudo3dRenderTextured(int FOV, double wallheight=1);
     //render stripe
-    void renderStripe(int s);
+    int renderStripe(void* data);
     void setPlayerPos(Point p);
     Point getPlayerPos() { return playerPos; };
     int getCellWidth() { return SCREEN_WIDTH / map->xSize(); };

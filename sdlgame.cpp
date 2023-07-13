@@ -204,8 +204,12 @@ void GridGame::pseudo3dRender(int FOV, double wallheight)
 }
 
 
-void GridGame::renderStripe(int i)
+int GridGame::renderStripe(void* data)
 {
+    ThreadData* tdata = (ThreadData*)data;
+    int i = tdata->stripe;
+    double* ZBuffer = tdata->zbuffer;
+    Uint32* pixels = tdata->pixels;
     double scanDir = 2 * i / static_cast<double>(renderWidth) - 1; // -1 ---- 0 ---- 1 for the scan across the screen
     CollisionEvent collision = ddaRaycast(getPlayerPos(), angle + FOV * scanDir);
     ZBuffer[i] = collision.perpWallDist; //set zbuffer value
