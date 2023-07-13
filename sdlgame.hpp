@@ -28,7 +28,7 @@ namespace nva
 struct ThreadData
 {
     int stripe;
-    double* zbuffer;
+    double zbuffer[INTERNAL_RENDER_RES_HORIZ];
     Uint32* pixels;
 };
 
