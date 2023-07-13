@@ -145,7 +145,7 @@ private:
     SDL_Texture* textureBuffer;
     const int renderWidth = INTERNAL_RENDER_RES_HORIZ;
     const int renderHeight = INTERNAL_RENDER_RES_VERT;
-    int FOV = 60;
+    int FOV = 30; //double current value
     int wallheight = 1;
     Uint8 rshift = format->Rshift;
     Uint8 gshift = format->Gshift;
