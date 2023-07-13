@@ -203,12 +203,82 @@ void GridGame::pseudo3dRender(int FOV, double wallheight)
     SDL_RenderPresent(renderer); // fast enough we don't need a buffer
 }
 
+
+void GridGame::renderStripe(int i)
+{
+    double scanDir = 2 * i / static_cast<double>(renderWidth) - 1; // -1 ---- 0 ---- 1 for the scan across the screen
+    CollisionEvent collision = ddaRaycast(getPlayerPos(), angle + FOV * scanDir);
+    ZBuffer[i] = collision.perpWallDist; //set zbuffer value
+    int lineHeight = static_cast<int>(wallheight * (renderHeight / collision.perpWallDist));
+    int drawStart = -lineHeight / 2 + renderHeight / 2;
+    if (drawStart < 0) drawStart = 0;
+    int drawEnd = lineHeight / 2 + renderHeight / 2;
+    if (drawEnd > renderHeight) drawEnd = renderHeight;
+    double texCoord;
+    const Uint32 black = SDL_MapRGBA(format, 0, 0, 0, 255);
+    if (collision.sideHit)
+        texCoord = collision.intersect.x - static_cast<int>(collision.intersect.x);
+    else
+        texCoord = collision.intersect.y - static_cast<int>(collision.intersect.y);
+    int textureToRender = collision.tileData;
+    int texX = static_cast<int>(texCoord * currentTextureSet->widthHeightAt(textureToRender - 1).first);
+    texX = nva::clamp<int>(texX, 0, currentTextureSet->widthHeightAt(textureToRender - 1).first);
+    if (textureToRender)
+    {
+        for (int y = drawStart; y < drawEnd; y++)
+        {
+            int texY = (((y * 2 - renderHeight + lineHeight) * currentTextureSet->widthHeightAt(textureToRender - 1).second) / lineHeight) / 2;
+            texY = nva::clamp<int>(texY, 0, currentTextureSet->widthHeightAt(textureToRender - 1).second);
+            rgba textureColor;
+            textureColor = currentTextureSet->colorAt(textureToRender - 1, texX, texY);
+            if (collision.sideHit)
+                pixels[y * renderWidth + i] = (textureColor.r << rshift) |
+                                                    (textureColor.g << gshift) |
+                                                    (textureColor.b << bshift) |
+                                                    (textureColor.a << ashift);
+                else
+                    pixels[y * renderWidth + i] = ((textureColor.r / 2) << rshift) |
+                                                    ((textureColor.g / 2) << gshift) |
+                                                    ((textureColor.b / 2) << bshift) |
+                                                    (textureColor.a << ashift);
+            }
+            //floor casting
+            for (int y = drawEnd + 1; y <= renderHeight; y++)
+            {
+                // Calculate the current distance from the player to the floor/ceiling
+                double currentDist = renderHeight / (2.0 * y - renderHeight);
+                double weight = currentDist / collision.perpWallDist;
+                double floorX = weight * collision.intersect.x + (1 - weight) * playerPos.x;
+                double floorY = weight * collision.intersect.y + (1 - weight) * playerPos.y;
+                int floorTexX = static_cast<int>(floorX * currentTextureSet->widthHeightAt(1).first) % currentTextureSet->widthHeightAt(1).first;
+                int floorTexY = static_cast<int>(floorY * currentTextureSet->widthHeightAt(1).second) % currentTextureSet->widthHeightAt(1).second;
+                floorTexX = nva::clamp<int>(floorTexX, 0, currentTextureSet->widthHeightAt(1).first);
+                floorTexY = nva::clamp<int>(floorTexY, 0, currentTextureSet->widthHeightAt(1).second);
+                rgba ftex = currentTextureSet->colorAt(1, floorTexX, floorTexY);
+                rgba ctex = currentTextureSet->colorAt(1, floorTexX, floorTexY);
+                pixels[(y-1) * renderWidth + i] = (ftex.r << rshift) | //floor
+                                                        (ftex.g << gshift) |
+                                                        (ftex.b << bshift) |
+                                                        (ftex.a << ashift);
+                pixels[(renderHeight - y) * renderWidth + i] = (ctex.r << rshift) | //ceiling
+                                                        (ctex.g << gshift) |
+                                                        (ctex.b << bshift) |
+                                                        (ctex.a << ashift);
+            }
+        }
+        else
+        {
+            for (int y = 0; y < renderHeight; y++)
+            {
+                pixels[y * renderWidth + i] = black;
+            }
+        }
+}
+
 //speed could almost certainly be improved with multithreading or decreasing # of raycasts
 void GridGame::pseudo3dRenderTextured(int FOV, double wallheight)
 {
     // Calculate the render dimensions
-    const int renderWidth = INTERNAL_RENDER_RES_HORIZ;
-    const int renderHeight = INTERNAL_RENDER_RES_VERT;
     double ZBuffer[renderWidth]; // store Z distances for sprite rendering (necessary for occlusion)
     if (!textureBuffer)
         textureBuffer = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, renderWidth, renderHeight);
@@ -216,10 +286,6 @@ void GridGame::pseudo3dRenderTextured(int FOV, double wallheight)
     Uint32* pixels;
     int pitch;
     SDL_LockTexture(textureBuffer, nullptr, reinterpret_cast<void**>(&pixels), &pitch);
-    Uint8 rshift = format->Rshift;
-    Uint8 gshift = format->Gshift;
-    Uint8 bshift = format->Bshift;
-    Uint8 ashift = format->Ashift;
     FOV /= 2;
     //wall casting
     for (int i = 0; i < renderWidth; i++)

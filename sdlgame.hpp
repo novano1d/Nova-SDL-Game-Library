@@ -25,6 +25,13 @@ namespace nva
     bool loadImage(std::vector<unsigned char>& image, const std::string& filename, int& x, int&y);
 }
 
+struct threadPass
+{
+    int stripe;
+    double** zbuffer;
+    void** pixels;
+};
+
 //Convenience
 struct rgba { int r,g,b,a; } ;
 
@@ -136,6 +143,14 @@ private:
     double rotSpeed = 100; //degrees per second
     TextureHandler* currentTextureSet = nullptr;
     SDL_Texture* textureBuffer;
+    const int renderWidth = INTERNAL_RENDER_RES_HORIZ;
+    const int renderHeight = INTERNAL_RENDER_RES_VERT;
+    int FOV = 60;
+    int wallheight = 1;
+    Uint8 rshift = format->Rshift;
+    Uint8 gshift = format->Gshift;
+    Uint8 bshift = format->Bshift;
+    Uint8 ashift = format->Ashift;
 public:
     GridGame(int w, int h, SDL_Window* win, SDL_Renderer* r) : Game(w, h, win, r) {}
     //sets the current map pointer
@@ -155,6 +170,8 @@ public:
     void pseudo3dRender(int FOV, double wallheight=1);
     //Renders false 3d textured
     void pseudo3dRenderTextured(int FOV, double wallheight=1);
+    //render stripe
+    void renderStripe(int s);
     void setPlayerPos(Point p);
     Point getPlayerPos() { return playerPos; };
     int getCellWidth() { return SCREEN_WIDTH / map->xSize(); };
